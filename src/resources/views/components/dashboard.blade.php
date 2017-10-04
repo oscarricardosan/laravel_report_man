@@ -2,62 +2,74 @@
     $tables= $report->tables();
 ?>
 <div class="report_manPanel2041 col-sm-12">
-    <h5>Tablas</h5>
-    @foreach($tables->chunk(4) as $block)
-    <div class="row">
-        @foreach($block as $index_table=> $table)
-            <div class="col-sm-3">
-                <table class="table table-bordered table-striped table-condensed">
-                    <thead>
-                    <tr>
-                        <th>
-                            <label>
-                                <input type="checkbox" class="check_fields"> {{ $table['label'] }}
-                            </label>
-                        </th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    @foreach($table['fields'] as $index_field=> $field)
+    <form class="panelOfTables" method="post">
+        {{ csrf_field() }}
+        <h5>Tablas</h5>
+        @foreach($tables->chunk(4) as $block)
+        <div class="row">
+            @foreach($block as $index_table=> $table)
+                <div class="col-sm-3">
+                    <table class="table table-bordered table-striped table-condensed">
+                        <thead>
                         <tr>
-                            <td>
+                            <th>
                                 <label>
-                                    <input type="checkbox" class="field" value="{{ $index_table }}:{{ $index_field }}"> {{ $field['label'] }}
+                                    <input type="checkbox" class="check_fields"> {{ $table['label'] }}
                                 </label>
-                            </td>
+                            </th>
                         </tr>
-                    @endforeach
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                        @foreach($table['fields'] as $index_field=> $field)
+                            <tr>
+                                <td>
+                                    <label>
+                                        <input type="checkbox" name="fields[]" class="field" value="{{ $index_table }}:{{ $index_field }}"> {{ $field['label'] }}
+                                    </label>
+                                </td>
+                            </tr>
+                        @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endforeach
             </div>
         @endforeach
+        <h5>
+            Filtros
+            <a href="#" class="addFilter">
+                <i class="fa fa-plus-circle"></i>Añadir filtro
+            </a>
+        </h5>
+        <div class="col-sm-12 filters">
         </div>
-    @endforeach
-    <h5>
-        Filtros
-        <a href="#" class="addFilter">
-            <i class="fa fa-plus-circle"></i>Añadir filtro
-        </a>
-    </h5>
-    <div class="col-sm-12 filters">
-    </div>
 
-    <div class="row">
-        <div class="col-sm-12" style="text-align: center">
-            <button type="submit" class="btn btn-primary" style="margin-right: 2em;">
-                <i class="fa fa-file-excel-o"></i> Generar Excel
-            </button>
-            <button type="submit" class="btn btn-primary">
-                <i class="fa fa-file-text-o"></i> Generar CSV
-            </button>
+        <div class="row">
+            <div class="col-sm-12" style="text-align: center">
+                @if(isset($route_to_export_xls))
+                    <button type="submit" class="btn btn-primary" style="margin-right: 2em;" formaction="{{ $route_to_export_xls }}">
+                        <i class="fa fa-file-excel-o"></i> Generar Excel xls
+                    </button>
+                @endif
+                @if(isset($route_to_export_xlsx))
+                    <button type="submit" class="btn btn-primary" style="margin-right: 2em;" formaction="{{ $route_to_export_xlsx }}">
+                        <i class="fa fa-file-excel-o"></i> Generar Excel xlsx
+                    </button>
+                @endif
+                @if(isset($route_to_export_csv))
+                    <button type="submit" class="btn btn-primary" style="margin-right: 2em;" formaction="{{ $route_to_export_csv }}">
+                        <i class="fa fa-file-text-o"></i> Generar CSV
+                    </button>
+                @endif
+            </div>
         </div>
-    </div>
+    </form>
     @verbatim
     <script type="text/template" class="fitlerTPL">
         <div class="row">
             <div class="col-sm-3">
                 {{ if(index>0){ }}
-                    <select class="form-control" name="filter[{{= index }}][logical_operator]">
+                    <select class="form-control" name="filters[{{= index }}][logical_operator]">
                         {{ $.each(logical_operators, function(index, operator){ }}
                         <option value="{{= index }}">{{= operator.label }}</option>
                         {{ }) }}
@@ -67,7 +79,7 @@
                 {{ } }}
             </div>
             <div class="col-sm-3">
-                <select class="form-control filter_field" name="filter[{{= index }}][field]">
+                <select class="form-control filter_field" name="filters[{{= index }}][field]">
                     {{ $.each(filter_fields, function(index_table, table){ }}
                         {{ $.each(table.fields, function(index_field, filter_field){ }}
                         <option value="{{= index_table }}:{{= index_field }}" data-type="{{= filter_field.type }}">{{= table.label }} - {{= filter_field.label }}</option>
@@ -76,14 +88,14 @@
                 </select>
             </div>
             <div class="col-sm-3">
-                <select class="form-control" name="filter[{{= index }}][relational_operator]">
+                <select class="form-control" name="filters[{{= index }}][relational_operator]">
                     {{ $.each(relational_operators, function(index, operator){ }}
                     <option value="{{= index }}">{{= operator.label }}</option>
                     {{ }) }}
                 </select>
             </div>
             <div class="col-sm-3">
-                <input class="form-control filter_value" name="filter[{{= index }}][value]" step="0.01">
+                <input class="form-control filter_value" name="filters[{{= index }}][value]" step="0.01">
             </div>
             <div class="col-sm-12" style="text-align: right">
                 <a href="#" style="color: darkred;" class="removeFilter">
@@ -132,12 +144,13 @@
                 $('.report_manPanel2041 .fitlerTPL').renderTpl(dataToFilterTpl)
             );
             filterIndex++;
+            $('.report_manPanel2041 .filter_field').change();
         });
-        $(document).on('click', '.removeFilter', function(event){
+        $(document).on('click', '.report_manPanel2041 .removeFilter', function(event){
             event.preventDefault();
             $(this).closest('.row').remove();
         });
-        $(document).on('click', '.filter_field', function(){
+        $(document).on('change', '.report_manPanel2041 .filter_field', function(){
             var type= $(this).find('option:selected').data('type');
 
             if(type== 'numeric')
@@ -147,5 +160,6 @@
             else
                 $(this).closest('.row').find('.filter_value').attr('type', 'text');
         });
+
     });
 </script>

@@ -3,17 +3,34 @@
 namespace Oscarricardosan\Report_man;
 
 
-use Doctrine\DBAL\Query\QueryBuilder;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Maatwebsite\Excel\Facades\Excel;
+use Oscarricardosan\Report_man\Maps\ParamsMap;
 
 abstract class Report_man
 {
 
     /**
-     * @var QueryBuilder
+     * @var Builder
      */
     protected $query;
+
+    /**
+     * @var \Illuminate\Database\Eloquent\Collection
+     */
+    protected $query_results;
+
+    /**
+     * @var array
+     */
+    protected $fields_in_query;
+
+    /**
+     * @var array
+     */
+    protected $tables_in_query;
 
 
     /**
@@ -83,7 +100,7 @@ abstract class Report_man
        if($this->needs_table_relation('contacts'))
           $this->query->join('contacts', 'users.id', '=', 'contacts.user_id');
        if($this->needs_table_relation('orders'))
-          $this->query->join('orders', 'users.id', '=', 'orders.user_id');
+          $this->query->leftJoin('orders', 'users.id', '=', 'orders.user_id');
      * @return $this
      */
     abstract public function loadRelationships();
@@ -94,7 +111,8 @@ abstract class Report_man
      */
     public function needs_table_relation($table)
     {
-        return true;
+
+        return in_array($table, $this->tables_in_query);
     }
 
     /**
@@ -127,6 +145,161 @@ abstract class Report_man
             $fields[$indexTable]['fields']= $cleaned->all();
         }
         return $fields;
+    }
+
+    /**
+     * @param array $params
+     * @return $this
+     */
+    public function build_query(ParamsMap $paramsMap)
+    {
+        $this
+            ->build_select($paramsMap->fields)
+            ->build_where(is_array($paramsMap->filters)?$paramsMap->filters:[])
+            ->extract_tables_of_select_fields()
+            ->loadRelationships();
+        return $this;
+    }
+
+    /**
+     * @param array $fields
+     * @return $this
+     */
+    public function build_select(array $fields)
+    {
+        $this->fields_in_query= $this->solve_fields($fields);
+        $fields_in_select= [];
+        foreach ($this->fields_in_query as $field){
+            $fields_in_select[]= $field['sql'];
+        }
+        $this->query->select($fields_in_select);
+        $this->load_groupBy();
+        return $this;
+    }
+
+    /**
+     * @return $this
+     */
+    protected function load_groupBy()
+    {
+        $fieldsGroupBy= [];
+        foreach ($this->fields_in_query as $field){
+            if(!array_has($field, 'to_group_by'))
+                $fieldsGroupBy[]= $field['sql'];
+            elseif($field['to_group_by']!==false)
+                $fieldsGroupBy[]= $field['to_group_by'];
+        }
+        if(count($fieldsGroupBy)>0)
+            $this->query->groupBy($fieldsGroupBy);
+        return $this;
+    }
+
+    /**
+     * @param array $fields
+     * @return $this
+     */
+    public function build_where(array $filters)
+    {
+        foreach ($filters as $filter){
+            if(is_null($filter->logical_operator) || $this->logical_operators[$filter->logical_operator]['value'] == 'AND')
+                $this->query->where(
+                    $this->solve_field($filter->field)['sql'],
+                    $this->relational_operators[$filter->relational_operator]['value'],
+                    $filter->value
+                );
+            elseif($this->logical_operators[$filter->logical_operator]['value'] == 'OR')
+                $this->query->orWhere(
+                    $this->solve_field($filter->field)['sql'],
+                    $this->relational_operators[$filter->relational_operator]['value'],
+                    $filter->value
+                );
+
+        }
+        return $this;
+    }
+
+    /**
+     * @param array $fields
+     * @return array
+     */
+    public function solve_fields(array $fields)
+    {
+        $resolved_fields= [];
+        foreach ($fields as $field){
+            $resolved_fields[]= $this->solve_field($field);
+        }
+        return $resolved_fields;
+    }
+
+    /**
+     * @param string $field
+     * @return array
+     */
+    public function solve_field($field)
+    {
+        $parts= explode(':', $field);
+        $index_table= $parts[0];
+        $index_field= $parts[1];
+        return $this->tables()[$index_table]['fields'][$index_field];
+    }
+
+    /**
+     * @return $this
+     */
+    public function extract_tables_of_select_fields()
+    {
+        $tables= [];
+        foreach ($this->fields_in_query as $field){
+            if(array_has($field, "needsTable")){
+                if($field["needsTable"] !== false)
+                    $tables[]= $field["needsTable"];
+            }else{
+                if(is_string($field['sql'])){
+                    $parts= explode('.', $field['sql']);
+                    if(count($parts)>0){
+                        $tables[]= $parts[0];
+                    }
+                }
+            }
+        }
+        $this->tables_in_query= array_unique($tables);
+        return $this;
+    }
+
+    /**
+     * @return $this
+     */
+    public function execQuery()
+    {
+        $this->query_results= $this->query->get();
+        return $this;
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
+    public function get_query_results()
+    {
+        return $this->query_results;
+    }
+
+    /**
+     * @param string $file_name
+     * @param string $typeFile xls, xlsx, csv, pdf
+     * @return Excel
+     */
+    public function download($file_name, $typeFile)
+    {
+        return Excel::create($file_name, function($excel) {
+            $this->query_results;
+            $excel->setCreator('Sabueso digital')->setCompany('savne.net');
+            $excel->sheet('Sheetname', function($sheet) {
+                $sheet->fromArray(
+                    json_decode($this->get_query_results()->toJson(), true)
+                );
+            });
+
+        })->download($typeFile);
     }
 
 }
