@@ -2,7 +2,7 @@
     $tables= $report->tables();
 ?>
 <div class="report_manPanel2041 col-sm-12">
-    <form class="panelOfTables" method="post">
+    <form class="panelOfTables" method="post" target="_blank">
         {{ csrf_field() }}
         <h5>Tablas</h5>
         @foreach($tables->chunk(4) as $block)

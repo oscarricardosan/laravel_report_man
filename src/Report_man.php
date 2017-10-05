@@ -240,7 +240,10 @@ abstract class Report_man
         $parts= explode(':', $field);
         $index_table= $parts[0];
         $index_field= $parts[1];
-        return $this->tables()[$index_table]['fields'][$index_field];
+        $table= $this->tables()[$index_table];
+        $field= $table['fields'][$index_field];
+        $field['table_label']= $table['label'];
+        return $field;
     }
 
     /**
@@ -250,20 +253,36 @@ abstract class Report_man
     {
         $tables= [];
         foreach ($this->fields_in_query as $field){
-            if(array_has($field, "needsTable")){
-                if($field["needsTable"] !== false)
-                    $tables[]= $field["needsTable"];
-            }else{
-                if(is_string($field['sql'])){
-                    $parts= explode('.', $field['sql']);
-                    if(count($parts)>0){
-                        $tables[]= $parts[0];
-                    }
+            if(array_has($field, "needsTable") && $field["needsTable"] !== false){
+                $tables[]= $field["needsTable"];
+            }
+            if(is_string($field['sql'])){
+                $parts= explode('.', $field['sql']);
+                if(count($parts)>0){
+                    $tables[]= $parts[0];
+                }
+            }
+            if(array_has($field, "to_group_by") && is_string($field['to_group_by'])){
+                $parts= explode('.', $field['to_group_by']);
+                if(count($parts)>0){
+                    $tables[]= $parts[0];
                 }
             }
         }
         $this->tables_in_query= array_unique($tables);
         return $this;
+    }
+
+    /**
+     * @return array
+     */
+    public function extract_labels_of_fields_in_select()
+    {
+        $headers= [];
+        foreach ($this->fields_in_query as $field){
+            $headers[]= $field['table_label'].' - '.$field['label'];
+        }
+        return $headers;
     }
 
     /**
@@ -293,10 +312,10 @@ abstract class Report_man
         return Excel::create($file_name, function($excel) {
             $this->query_results;
             $excel->setCreator('Sabueso digital')->setCompany('savne.net');
-            $excel->sheet('Sheetname', function($sheet) {
-                $sheet->fromArray(
-                    json_decode($this->get_query_results()->toJson(), true)
-                );
+            $excel->sheet('Hoja 1', function($sheet) {
+                $headers= [$this->extract_labels_of_fields_in_select()];
+                $results= json_decode($this->get_query_results()->toJson(), true);
+                $sheet->fromArray(array_merge($headers, $results), null, 'A1', false, false);
             });
 
         })->download($typeFile);
