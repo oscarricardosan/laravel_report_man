@@ -9,10 +9,9 @@
             "email": "oscarricardosan@gmail.com"
         }
     ],
-    "minimum-stability": "dev",
     "require": {
         "php" : ">=5.6.4",
-        "oscarricardosan/mapper": "dev-master"
+        "oscarricardosan/mapper": "^1.4"
     },
     "require-dev": {
         "phpunit/phpunit" : "~5.0"
@@ -26,5 +25,7 @@
         "psr-4": {
 	    "Oscarricardosan\\Report_man\\Tests\\": "tests"
         }
-    }
+    },
+    "minimum-stability" : "dev",
+    "prefer-stable" : true
 }
