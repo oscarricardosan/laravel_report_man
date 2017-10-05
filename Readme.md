@@ -25,8 +25,6 @@ $.fn.renderTpl= function(data) {
 To export Excel needs
 http://www.maatwebsite.nl/laravel-excel/docs/getting-started#installation
 
-To export PDF needs dompdf/dompdf
-
 "maatwebsite/excel": "~2.1.0",
-"dompdf/dompdf": "~0.6.1"
+
 

@@ -12,6 +12,8 @@ use Oscarricardosan\Report_man\Maps\ParamsMap;
 abstract class Report_man
 {
 
+    protected $footer_in_txt_to_files= [['']];
+
     /**
      * @var Builder
      */
@@ -315,7 +317,7 @@ abstract class Report_man
             $excel->sheet('Hoja 1', function($sheet) {
                 $headers= [$this->extract_labels_of_fields_in_select()];
                 $results= json_decode($this->get_query_results()->toJson(), true);
-                $sheet->fromArray(array_merge($headers, $results), null, 'A1', false, false);
+                $sheet->fromArray(array_merge($headers, $results, $this->footer_in_txt_to_files), null, 'A1', false, false);
             });
 
         })->download($typeFile);
