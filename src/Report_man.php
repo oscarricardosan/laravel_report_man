@@ -45,7 +45,7 @@ abstract class Report_man
      * @var array
      */
     public $relational_operators = [
-        ['label'=> 'Igual a ', 'value'=> '=='],
+        ['label'=> 'Igual a ', 'value'=> '='],
         ['label'=> 'Menor a ', 'value'=> '<'],
         ['label'=> 'Menor o igual que ', 'value'=> '<='],
         ['label'=> 'Mayor a ', 'value'=> '>'],
