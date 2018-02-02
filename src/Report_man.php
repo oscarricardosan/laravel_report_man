@@ -203,18 +203,24 @@ abstract class Report_man
     public function build_where(array $filters)
     {
         foreach ($filters as $filter){
-            if(is_null($filter->logical_operator) || $this->logical_operators[$filter->logical_operator]['value'] == 'AND')
+            $field_sql= $this->solve_field($filter->field);
+            if(array_key_exists('sql_where', $field_sql))
+                $field_where= $field_sql['sql_where'];
+            else
+                $field_where= $field_sql['sql'];
+            if(is_null($filter->logical_operator) || $this->logical_operators[$filter->logical_operator]['value'] == 'AND'){
                 $this->query->where(
-                    $this->solve_field($filter->field)['sql'],
+                    $field_where,
                     $this->relational_operators[$filter->relational_operator]['value'],
                     $filter->value
                 );
-            elseif($this->logical_operators[$filter->logical_operator]['value'] == 'OR')
+            }elseif($this->logical_operators[$filter->logical_operator]['value'] == 'OR'){
                 $this->query->orWhere(
-                    $this->solve_field($filter->field)['sql'],
+                    $field_where,
                     $this->relational_operators[$filter->relational_operator]['value'],
                     $filter->value
                 );
+            }
 
         }
         return $this;
